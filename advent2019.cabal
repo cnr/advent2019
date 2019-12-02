@@ -1,0 +1,39 @@
+cabal-version: 2.4
+name:          advent2019
+version:       0.1.0.0
+license:       MIT
+author:        Connor James
+build-type:    Simple
+
+common deps
+  build-depends:
+    , base    ^>=4.12
+    , split   ^>=0.2.3.3
+    , vector  ^>=0.12.0.3
+
+  default-language:   Haskell2010
+  default-extensions: ScopedTypeVariables
+  ghc-options:
+    -Wall -Wincomplete-uni-patterns -Wcompat
+    -Wincomplete-record-updates -Wmissing-home-modules
+    -Wmissing-export-lists -Wredundant-constraints
+
+library
+  import:          deps
+
+  -- cabal-fmt: expand common
+  exposed-modules: Common
+  hs-source-dirs:  common
+
+common day
+  import:         deps
+  hs-source-dirs: src
+  build-depends:  advent2019
+
+executable day1
+  import:  day
+  main-is: Day1.hs
+
+executable day2
+  import:  day
+  main-is: Day2.hs
