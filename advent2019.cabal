@@ -7,9 +7,10 @@ build-type:    Simple
 
 common deps
   build-depends:
-    , base    ^>=4.12
-    , split   ^>=0.2.3.3
-    , vector  ^>=0.12.0.3
+    , base        ^>=4.12
+    , containers  ^>=0.6.0.1
+    , split       ^>=0.2.3.3
+    , vector      ^>=0.12.0.3
 
   default-language:   Haskell2010
   default-extensions: ScopedTypeVariables
@@ -37,3 +38,7 @@ executable day1
 executable day2
   import:  day
   main-is: Day2.hs
+
+executable day3
+  import:  day
+  main-is: Day3.hs
