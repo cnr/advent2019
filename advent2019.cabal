@@ -42,3 +42,7 @@ executable day2
 executable day3
   import:  day
   main-is: Day3.hs
+
+executable day4
+  import:  day
+  main-is: Day4.hs
