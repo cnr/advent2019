@@ -9,6 +9,7 @@ common deps
   build-depends:
     , base        ^>=4.12
     , containers  ^>=0.6.0.1
+    , polysemy    ^>=1.2.1
     , split       ^>=0.2.3.3
     , vector      ^>=0.12.0.3
 
@@ -46,3 +47,7 @@ executable day3
 executable day4
   import:  day
   main-is: Day4.hs
+
+executable day5
+  import:  day
+  main-is: Day5.hs
