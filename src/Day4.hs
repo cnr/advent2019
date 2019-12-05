@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Data.List (groupBy)
+import Data.List (group)
 
 inputStart :: [Int]
 inputStart = [3,7,2,0,3,7]
@@ -23,7 +23,7 @@ part1 :: [Int] -> Bool
 part1 xs = or (zipWith (==) xs (tail xs))
 
 part2 :: [Int] -> Bool
-part2 = any ((== 2) . length) . groupBy (==)
+part2 = any ((== 2) . length) . group
 
 increasingSequences :: [[Int]]
 increasingSequences = go 6 1
@@ -35,4 +35,4 @@ increasingSequences = go 6 1
      -> Int -- current minimum bound. e.g., if we've built [3,4] so far, minimum bound is 4
      -> [[Int]]
   go 0 _ = [[]]
-  go n x = [(y:ys) | y <- [x..9], ys <- go (n-1) y]
+  go n x = [y:ys | y <- [x..9], ys <- go (n-1) y]
