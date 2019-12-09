@@ -21,33 +21,35 @@ import           Data.List (unfoldr)
 import           Data.List.Split (splitOn)
 import           Data.Vector (Vector)
 import qualified Data.Vector as V
-import           Polysemy (Members, Sem, reinterpret, makeSem, run)
+import           Polysemy (Members, Sem, reinterpret, reinterpret2, makeSem, run)
 import           Polysemy.Input (Input(..), input)
 import           Polysemy.Output (Output, output, runOutputList)
 import           Polysemy.State (evalState, evalLazyState, get, modify, put)
 
 data Memory m a where
-  ReadAddr  :: Int -> Memory m Int
-  WriteAddr :: Int -> Int -> Memory m ()
+  ReadAddr           :: Int -> Memory m Integer
+  WriteAddr          :: Int -> Integer -> Memory m ()
+  ReadRelativeBase   :: Memory m Int
+  ModifyRelativeBase :: Int -> Memory m ()
 
 makeSem ''Memory
 
-newtype Program = Program { unProgram :: [Int] }
+newtype Program = Program { unProgram :: [Integer] }
 
 parseProgram :: String -> Program
-parseProgram = Program . map P.read . splitOn ","
+parseProgram = Program . (++ replicate 2048 0) . map P.read . splitOn ","
 
 -- the interpreter order is important here, for reasons I can't entirely reason about.
 -- changing the order of any of these breaks the laziness in day 7, even when using
 -- `evalLazyState` for all of the interpreters.
-runProgram :: Program -> [Int] -> [Int]
+runProgram :: Program -> [Integer] -> [Integer]
 runProgram (Program prog) inp = run
   . fmap fst
-  . runFiniteInput @Int inp
+  . runFiniteInput @Integer inp
   . runMemory (V.fromList prog)
-  $ runOutputList @Int exec
+  $ runOutputList @Integer exec
 
-exec :: forall r. Members '[Memory, Input Int, Output Int] r => Sem r ()
+exec :: forall r. Members '[Memory, Input Integer, Output Integer] r => Sem r ()
 exec = go 0
   where
   go :: Int -> Sem r ()
@@ -58,9 +60,8 @@ exec = go 0
 
         doInput :: Sem r ()
         doInput = do
-          x <- raw 0
           i <- input
-          writeAddr x i
+          writeArg 0 i
           go (pc+2)
 
         doOutput :: Sem r ()
@@ -68,36 +69,58 @@ exec = go 0
           output =<< arg 0
           go (pc+2)
 
-        jumpWhen :: (Int -> Bool) -> Sem r ()
+        jumpWhen :: (Integer -> Bool) -> Sem r ()
         jumpWhen p = do
           val  <- arg 0
           addr <- arg 1
           if p val
-            then go addr
+            then go (fromIntegral addr)
             else go (pc+3)
 
-        binop :: (Int -> Int -> Int) -> Sem r ()
+        binop :: (Integer -> Integer -> Integer) -> Sem r ()
         binop f = do
           x   <- arg 0
           y   <- arg 1
-          out <- raw 2
-          writeAddr out (f x y)
+          writeArg 2 (f x y)
           go (pc+4)
 
-        cmp :: (Int -> Int -> Bool) -> Sem r ()
+        cmp :: (Integer -> Integer -> Bool) -> Sem r ()
         cmp p = binop (\x y -> if p x y then 1 else 0)
 
+        doSetRel :: Sem r ()
+        doSetRel = do
+          offset <- arg 0
+          modifyRelativeBase (fromIntegral offset)
+          go (pc+2)
+
         -- get the nth argument, dereferencing the pointer when necessary
-        arg :: Int -> Sem r Int
+        arg :: Int -> Sem r Integer
         arg n =
           case modes !! n of
-            0 -> readAddr =<< readAddr (pc+n+1)
+            0 -> readAddr . fromIntegral =<< readAddr (pc+n+1)
             1 -> readAddr (pc+n+1)
-            m -> error ("unexpected mode: " <> show m)
+            2 -> do
+              relBase <- readRelativeBase
+              offset  <- raw n
+              fromIntegral <$> readAddr (relBase + fromIntegral offset)
+            m -> error ("unexpected arg mode: " <> show m)
+
+        writeArg :: Int -> Integer -> Sem r ()
+        writeArg n val =
+          case modes !! fromIntegral n of
+            0 -> do
+              addr <- fromIntegral <$> raw n
+              writeAddr addr val
+            1 -> error "can't write to immediate value"
+            2 -> do
+              relBase <- readRelativeBase
+              offset  <- raw n
+              writeAddr (relBase + fromIntegral offset) val
+            m -> error ("unexpected writeArg mode: " <> show m)
 
         -- get the nth argument
-        raw :: Int -> Sem r Int
-        raw n = readAddr (pc+n+1)
+        raw :: Int -> Sem r Integer
+        raw n = fromIntegral <$> readAddr (pc+n+1)
 
     case opcode of
       1  -> binop (+)
@@ -108,13 +131,16 @@ exec = go 0
       6  -> jumpWhen (== 0)
       7  -> cmp (<)
       8  -> cmp (==)
+      9  -> doSetRel
       99 -> pure ()
       op -> error ("unexpected opcode: " <> show op)
 
-runMemory :: Vector Int -> Sem (Memory ': r) a -> Sem r a
-runMemory vec = evalState vec . reinterpret (\case
+runMemory :: Vector Integer -> Sem (Memory ': r) a -> Sem r a
+runMemory vec = evalState @Int 0 . evalState vec . reinterpret2 (\case
   ReadAddr n -> (V.! n) <$> get
-  WriteAddr n a -> modify (V.// [(n,a)]))
+  WriteAddr n a -> modify (V.// [(n,a)])
+  ReadRelativeBase -> get @Int
+  ModifyRelativeBase n -> modify @Int (+n))
 
 -- We need lazy state for day 7: with lazy input, we can recursively pipe outputs
 -- to inputs

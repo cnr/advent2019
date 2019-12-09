@@ -4,23 +4,23 @@ import Common (inputSingle)
 import Data.List (permutations)
 import IntCode (Program, parseProgram, runProgram)
 
-part1 :: [Int]
+part1 :: [Integer]
 part1 = [0..4]
 
-part2 :: [Int]
+part2 :: [Integer]
 part2 = [5..9]
 
 main :: IO ()
 main = do
   prog <- parseProgram <$> inputSingle 7
 
-  let solve :: [Int] -> Int
+  let solve :: [Integer] -> Integer
       solve phases = maximum [ runPipe prog ps | ps <- permutations phases ]
 
   print (solve part1)
   print (solve part2)
 
-runPipe :: Program -> [Int] -> Int
+runPipe :: Program -> [Integer] -> Integer
 runPipe prog [p0,p1,p2,p3,p4] = last out4
   where
   out0 = runProgram prog (p0:0:out4)
