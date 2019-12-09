@@ -9,6 +9,7 @@ common deps
   build-depends:
     , base        ^>=4.12
     , containers  ^>=0.6.0.1
+    , mtl         ^>=2.2.2
     , polysemy    ^>=1.2.1
     , split       ^>=0.2.3.3
     , vector      ^>=0.12.0.3
@@ -24,7 +25,10 @@ library
   import:          deps
 
   -- cabal-fmt: expand common
-  exposed-modules: Common
+  exposed-modules:
+    Common
+    IntCode
+
   hs-source-dirs:  common
 
 common day
@@ -55,3 +59,7 @@ executable day5
 executable day6
   import:  day
   main-is: Day6.hs
+
+executable day7
+  import:  day
+  main-is: Day7.hs
